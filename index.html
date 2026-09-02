@@ -5,6 +5,12 @@
 <meta name="theme-color" content="#0b1510"><link rel="manifest" href="manifest.webmanifest"><title>Hunt & Fish AI — Nebraska</title>
 <style>
 :root{--bg:#09120e;--panel:#13221a;--panel2:#1a2d22;--line:#30463a;--text:#f2f6f2;--muted:#aab8b0;--accent:#91d86b;--gold:#e2b84d}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}header{padding:34px 22px 22px;border-bottom:1px solid var(--line)}h1{font-size:39px;margin:0 0 6px;font-weight:800;letter-spacing:-1.5px}h2{margin:0;font-size:25px}.sub{color:var(--muted);font-size:17px;font-weight:600}.wrap{max-width:1000px;margin:auto;padding:20px}.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px}.tab{border:2px solid var(--line);background:var(--panel);color:var(--text);border-radius:22px;padding:20px;font-size:24px;font-weight:800}.tab.active{background:var(--accent);color:#071008;border-color:#6aaa4c}.card{background:var(--panel);border:2px solid var(--line);border-radius:24px;padding:20px;margin:14px 0}.label{font-size:13px;letter-spacing:2px;color:var(--muted);font-weight:800;margin:0 0 10px}.controls{display:grid;grid-template-columns:1fr 1fr;gap:14px}select,input{width:100%;background:#0e1a14;border:2px solid var(--line);color:var(--text);padding:17px;border-radius:18px;font-size:17px;font-weight:650}.search{grid-column:1/-1}.btn{border:0;background:var(--accent);color:#071008;padding:15px 18px;border-radius:16px;font-size:16px;font-weight:800}.secondary{background:var(--panel2);color:var(--text);border:1px solid var(--line)}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.stat{background:var(--panel2);padding:15px;border-radius:18px}.stat b{display:block;font-size:19px;margin-top:5px}.score{font-size:58px;font-weight:900;color:var(--accent);letter-spacing:-3px}.result{border:1px solid var(--line);background:#101c16;border-radius:18px;padding:16px;margin-top:12px}.result h3{margin:0 0 5px;font-size:21px}.chips{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}.chip{background:#20362a;border-radius:999px;padding:7px 10px;color:#dce8df;font-size:13px}.small{font-size:13px;color:var(--muted);line-height:1.45}.source{margin-top:12px}.source a{color:var(--accent);font-weight:700}.hidden{display:none}#map{height:430px;border-radius:18px;overflow:hidden}.leaflet-popup-content-wrapper{background:#13221a;color:#f2f6f2}.leaflet-popup-tip{background:#13221a}.leaflet-popup-content a{color:#91d86b;font-weight:700}@media(max-width:650px){.controls,.stats{grid-template-columns:1fr}@media(max-width:650px){.controls,.stats{grid-template-columns:1fr}.search{grid-column:auto}h1{font-size:34px}.wrap{padding:14px}.tab{font-size:21px;padding:17px}}
+
+.nearbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.btn{border:1px solid var(--line);background:var(--panel2);color:var(--text);padding:10px 12px;border-radius:10px;cursor:pointer;font-weight:700}
+.btn.primary{background:var(--accent);color:#071008;border-color:var(--accent)}
+.detail{margin-top:12px;border-top:1px solid var(--line);padding-top:12px}
+.distance{color:var(--gold);font-weight:800}
 </style><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script></head>
 <body>
 <header><h1>🎣🦆🦌 Hunt & Fish AI</h1><div class="sub">Nebraska • Phase 1: real public-water database</div></header>
@@ -18,7 +24,11 @@
 </div></div>
 <div class="card"><div class="label">DATABASE</div><div class="stats"><div class="stat"><span class="small">WATERS LOADED</span><b id="count">0</b></div><div class="stat"><span class="small">SOURCE</span><b>2026 NGPC</b></div><div class="stat"><span class="small">DEPTH / STRUCTURE</span><b>NGPC maps</b></div></div></div>
 <div id="results"></div>
-<div class="card"><div class="label">PHASE 1B</div><p class="small"><b>Expanded coverage:</b> South-Central, Southeast and Southwest waters have now been added to the searchable database. This is still a growing dataset; Phase 1 will continue until the public-water tables are fully structured.</p></div><div class="card"><div class="label">PHASE 1 DATA SOURCES</div><p class="small">This build uses Nebraska Game & Parks Commission's 2026 Fishing Guide as the first structured dataset. NGPC says its public-water resources include water-body size, fish species and regulations. Its lake-contour system covers 125+ mapped waters and includes underwater habitat/structure information.</p><p class="source"><a target="_blank" href="https://outdoornebraska.gov/guides-maps/maps/contour-maps/">Open NGPC Lake Contour Maps →</a></p><p class="source"><a target="_blank" href="https://outdoornebraska.gov/fish/where-to-fish/">Open NGPC Where to Fish →</a></p><p class="source"><a target="_blank" href="https://outdoornebraska.gov/guides-maps/public-access-atlas/">Open NGPC Public Access Atlas →</a></p></div>
+<div class="card"><div class="label">PHASE 1B</div><p class="small"><b>Expanded coverage:</b> South-Central, Southeast and Southwest waters have now been added to the searchable database. This is still a growing dataset; Phase 1 will continue until the public-water tables are fully structured.</p></div><div class="card"><div class="label">FIND A WATER NEAR YOU</div>
+<p class="small">Use your phone's GPS to rank the mapped waters by straight-line distance. This does not determine legal access; verify current access and regulations in NGPC's interactive maps.</p>
+<div class="nearbar"><button class="btn primary" id="nearBtn">📍 Find waters near me</button><button class="btn" id="resetBtn">Reset results</button></div>
+<div id="nearStatus" class="small"></div></div>
+<div class="card"><div class="label">PHASE 1 DATA SOURCES</div><p class="small">This build uses Nebraska Game & Parks Commission's 2026 Fishing Guide as the first structured dataset. NGPC says its public-water resources include water-body size, fish species and regulations. Its lake-contour system covers 125+ mapped waters and includes underwater habitat/structure information.</p><p class="source"><a target="_blank" href="https://outdoornebraska.gov/guides-maps/maps/contour-maps/">Open NGPC Lake Contour Maps →</a></p><p class="source"><a target="_blank" href="https://outdoornebraska.gov/fish/where-to-fish/">Open NGPC Where to Fish →</a></p><p class="source"><a target="_blank" href="https://outdoornebraska.gov/guides-maps/public-access-atlas/">Open NGPC Public Access Atlas →</a></p></div>
 </section>
 <section id="mapping" class="hidden">
 <div class="card"><div class="label">NEBRASKA FISHING MAP</div><p class="small">This is the first live map layer. Markers currently represent waters with verified coordinates; the database will continue gaining coordinates as Phase 1 expands.</p><div class="controls"><button class="btn" id="locateBtn">📍 Use My Location</button><button class="btn secondary" id="nebraskaBtn">🗺️ Reset to Nebraska</button></div></div>
@@ -103,18 +113,73 @@ const coords={
 'Merritt Reservoir':[42.60833,-100.87778],
 'Lake Minatare SRA':[41.94958,-103.508],
 'Willow Creek SRA':[42.17917,-97.567],
-'Lake McConaughy':[41.20028,-101.66472]
+'Lake McConaughy':[41.20028,-101.66472],
 'Czechland Lake':[41.32569,-96.8208],
 'Conestoga Lake':[40.771057,-96.844614],
 'Davis Creek Reservoir WMA':[41.41794,-98.76631],
 'Elwood Reservoir WMA':[40.62578,-99.86089],
 'Walnut Creek Reservoir':[41.1003,-96.0308],
 'Wehrspann Lake Recreation Area':[41.1888,-96.1855],
-'Yankee Hill Lake WMA':[40.7165,-96.6325]
+'Yankee Hill Lake WMA':[40.7165,-96.6325],
+'Wirth Brothers Lake':[40.4950,-96.2300],
+'Liberty Cove':[40.3820,-98.5200],
+'Fort Kearny SRA':[40.6040,-99.0010],
+'Grand Island L.E. Ray Lake':[40.9290,-98.3420],
+'Gallagher Canyon Reservoir SRA':[40.8600,-99.6300],
+'Lake Helen':[40.8200,-99.6400]
 };
 function matches(w){let s=species.value,r=region.value,q=search.value.toLowerCase().trim();let hay=(w.name+' '+w.county+' '+w.species.join(' ')).toLowerCase();return (s==='all'||w.species.includes(s))&&(r==='all'||w.region===r)&&(!q||hay.includes(q))}
-function render(){let list=waters.filter(matches);count.textContent=list.length;results.innerHTML=list.map(w=>`<div class="result"><h3>${w.name}</h3><div class="small">${w.county} County • ${w.region} • ${w.acres.toLocaleString()} acres</div><div class="chips">${w.species.map(x=>`<span class="chip">${x}</span>`).join('')}</div><p class="small"><b>Access:</b> ${w.access}</p><p class="source"><a target="_blank" href="${sourceBase}${w.source}">2026 NGPC guide entry →</a>${coords[w.name]?` &nbsp; <a href="#" onclick="focusWater('${w.name.replace(/'/g,"\'")}');return false">📍 View on app map</a>`:''}</p></div>`).join('')||'<div class="card"><b>No matching waters.</b><p class="small">Try another species, region, or search term.</p></div>'}
+function render(listOverride=null){
+  let list=listOverride||waters.filter(matches);
+  count.textContent=list.length;
+  results.innerHTML=list.map(w=>`<div class="result">
+    <h3>${w.name}</h3>
+    <div class="small">${w.county} County • ${w.region} • ${w.acres.toLocaleString()} acres</div>
+    <div class="chips">${w.species.map(x=>`<span class="chip">${x}</span>`).join('')}</div>
+    <p class="small"><b>Access:</b> ${w.access}</p>
+    ${w._distance!==undefined?`<div class="distance">${w._distance.toFixed(1)} miles from you</div>`:''}
+    <div class="nearbar">
+      ${coords[w.name]?`<button class="btn" onclick="focusWater('${w.name.replace(/'/g,"\\'")}')">📍 Map</button>`:''}
+      ${coords[w.name]?`<a class="btn" target="_blank" href="https://www.google.com/maps/search/?api=1&query=${coords[w.name][0]},${coords[w.name][1]}">🧭 Navigate</a>`:''}
+      <button class="btn" onclick="showWater('${w.name.replace(/'/g,"\\'")}')">Details</button>
+    </div>
+    <div id="detail-${encodeURIComponent(w.name)}" class="detail hidden"></div>
+    <p class="source"><a target="_blank" href="${sourceBase}${w.source}">2026 NGPC guide entry →</a></p>
+  </div>`).join('')||'<div class="card"><b>No matching waters.</b><p class="small">Try another species, region, or search term.</p></div>'
+}
 [species,region,search].forEach(x=>x.addEventListener('input',render));render();
+
+function showWater(name){
+  const w=waters.find(x=>x.name===name); if(!w)return;
+  const el=document.getElementById('detail-'+encodeURIComponent(name));
+  if(!el)return;
+  const xy=coords[name];
+  el.classList.remove('hidden');
+  el.innerHTML=`<b>${w.name}</b>
+    <p class="small"><b>Species:</b> ${w.species.join(', ')}</p>
+    <p class="small"><b>Public-access note:</b> ${w.access}</p>
+    ${xy?`<p class="small"><b>Coordinates:</b> ${xy[0].toFixed(5)}, ${xy[1].toFixed(5)}</p>`:''}
+    <p class="small"><b>Next data layer:</b> live weather, water level/flow, water temperature and NGPC structure/bathymetry integration.</p>`;
+}
+function haversine(a,b){
+  const R=3958.7613, p=Math.PI/180;
+  const dLat=(b[0]-a[0])*p, dLon=(b[1]-a[1])*p;
+  const x=Math.sin(dLat/2)**2+Math.cos(a[0]*p)*Math.cos(b[0]*p)*Math.sin(dLon/2)**2;
+  return 2*R*Math.asin(Math.sqrt(x));
+}
+function findNearby(){
+  const status=document.getElementById('nearStatus');
+  if(!navigator.geolocation){status.textContent='GPS is not available in this browser.';return;}
+  status.textContent='Getting your location…';
+  navigator.geolocation.getCurrentPosition(pos=>{
+    const me=[pos.coords.latitude,pos.coords.longitude];
+    const ranked=waters.filter(w=>coords[w.name]).map(w=>({...w,_distance:haversine(me,coords[w.name])})).sort((a,b)=>a._distance-b._distance);
+    render(ranked.slice(0,10));
+    status.textContent=`Showing the 10 closest mapped waters to ${me[0].toFixed(4)}, ${me[1].toFixed(4)}.`;
+  },err=>{status.textContent='Location permission was denied or unavailable.';});
+}
+document.getElementById('nearBtn')?.addEventListener('click',findNearby);
+document.getElementById('resetBtn')?.addEventListener('click',()=>{document.getElementById('nearStatus').textContent='';render();});
 const mapTab=document.getElementById('mapTab'), mapping=document.getElementById('mapping');
 let map, markers={};
 function initMap(){if(map)return; map=L.map('map').setView([41.5,-99.9],7); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'© OpenStreetMap contributors'}).addTo(map); Object.entries(coords).forEach(([name,xy])=>{const w=waters.find(x=>x.name===name)||{name}; const m=L.marker(xy).addTo(map).bindPopup(`<b>${name}</b><br>${w.county?w.county+' County • '+w.acres.toLocaleString()+' acres':''}<br><a target=\"_blank\" href=\"https://www.google.com/maps/search/?api=1&query=${xy[0]},${xy[1]}\">Open in Google Maps →</a>`); markers[name]=m;});}
