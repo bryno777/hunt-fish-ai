@@ -11,6 +11,8 @@
 .btn.primary{background:var(--accent);color:#071008;border-color:var(--accent)}
 .detail{margin-top:12px;border-top:1px solid var(--line);padding-top:12px}
 .distance{color:var(--gold);font-weight:800}
+
+.findscore{font-size:28px;font-weight:800}.rank{font-size:13px;color:var(--gold);font-weight:800}.reason{margin:8px 0}.scorebar{height:8px;background:#26382d;border-radius:10px;overflow:hidden}.scorebar>span{display:block;height:100%;background:var(--accent)}.mutedbox{background:var(--panel2);padding:10px;border-radius:10px;margin-top:8px}
 </style><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script></head>
 <body>
 <header><h1>🎣🦆🦌 Hunt & Fish AI</h1><div class="sub">Nebraska • Phase 1: real public-water database</div></header>
@@ -24,7 +26,33 @@
 </div></div>
 <div class="card"><div class="label">DATABASE</div><div class="stats"><div class="stat"><span class="small">WATERS LOADED</span><b id="count">0</b></div><div class="stat"><span class="small">SOURCE</span><b>2026 NGPC</b></div><div class="stat"><span class="small">DEPTH / STRUCTURE</span><b>NGPC maps</b></div></div></div>
 <div id="results"></div>
-<div class="card"><div class="label">PHASE 1B</div><p class="small"><b>Expanded coverage:</b> South-Central, Southeast and Southwest waters have now been added to the searchable database. This is still a growing dataset; Phase 1 will continue until the public-water tables are fully structured.</p></div><div class="card"><div class="label">FIND A WATER NEAR YOU</div>
+<div class="card"><div class="label">PHASE 1B</div><p class="small"><b>Expanded database + recommendation engine:</b> South-Central, Southeast and Southwest waters are searchable, and the new Find Me a Fish engine ranks them by species and fishing method. This is still a growing dataset; Phase 1 will continue until the public-water tables are fully structured.</p></div>
+<div class="card" id="finder">
+  <div class="label">🎯 FIND ME A FISH</div>
+  <p class="small">Choose a species and fishing style. The app ranks waters using the current Phase 1 database: species match, water size, access, and your selected method. Live weather, wind, water temperature and flow will be added in the next layer.</p>
+  <div class="controls">
+    <select id="findSpecies">
+      <option>Walleye</option><option>Catfish</option><option>Crappie</option>
+      <option>Bass</option><option>Northern Pike</option><option>Trout</option>
+      <option>White Bass</option><option>Bluegill</option>
+    </select>
+    <select id="findMethod">
+      <option value="boat">Boat</option>
+      <option value="kayak">Kayak</option>
+      <option value="shore">Shore</option>
+    </select>
+    <select id="findRange">
+      <option value="25">Within 25 miles</option>
+      <option value="50">Within 50 miles</option>
+      <option value="100" selected>Within 100 miles</option>
+      <option value="200">Within 200 miles</option>
+    </select>
+  </div>
+  <div class="nearbar"><button class="btn primary" id="findFishBtn">🎯 Find my best waters</button></div>
+  <div id="finderStatus" class="small"></div>
+  <div id="finderResults"></div>
+</div>
+<div class="card"><div class="label">FIND A WATER NEAR YOU</div>
 <p class="small">Use your phone's GPS to rank the mapped waters by straight-line distance. This does not determine legal access; verify current access and regulations in NGPC's interactive maps.</p>
 <div class="nearbar"><button class="btn primary" id="nearBtn">📍 Find waters near me</button><button class="btn" id="resetBtn">Reset results</button></div>
 <div id="nearStatus" class="small"></div></div>
@@ -167,6 +195,78 @@ function haversine(a,b){
   const x=Math.sin(dLat/2)**2+Math.cos(a[0]*p)*Math.cos(b[0]*p)*Math.sin(dLon/2)**2;
   return 2*R*Math.asin(Math.sqrt(x));
 }
+
+function scoreWater(w, species, method){
+  let score = 45;
+  const reasons = [];
+  if(w.species.includes(species)){ score += 30; reasons.push("Target species is listed for this water."); }
+  else return {score:0,reasons:[]};
+
+  if(w.acres >= 5000){ score += 8; reasons.push("Large water body offers more area to locate fish."); }
+  else if(w.acres >= 500){ score += 5; reasons.push("Moderate-to-large water body."); }
+
+  const a=(w.access||"").toLowerCase();
+  if(method==="boat"){
+    if(a.includes("ramp")||a.includes("boat")){score+=10;reasons.push("Boat access is listed.");}
+    else {score-=4;reasons.push("Boat access is not clearly listed.");}
+  } else if(method==="kayak"){
+    if(a.includes("paddlecraft")||a.includes("nonpowered")||a.includes("boat")){score+=9;reasons.push("Kayak/paddlecraft-compatible access is indicated.");}
+    else if(a.includes("ramp")){score+=5;reasons.push("A boat ramp is listed; confirm paddlecraft access.");}
+    else score-=2;
+  } else {
+    if(a.includes("accessible")||a.includes("pier")||a.includes("bank")){score+=10;reasons.push("Shore-friendly access is indicated.");}
+    else score+=3;
+  }
+
+  if((w.access||"").toLowerCase().includes("camping")){score+=2;reasons.push("Camping is listed.");}
+  score=Math.max(1,Math.min(100,Math.round(score)));
+  return {score,reasons};
+}
+function runFinder(){
+  const species=document.getElementById("findSpecies").value;
+  const method=document.getElementById("findMethod").value;
+  const range=Number(document.getElementById("findRange").value);
+  const status=document.getElementById("finderStatus"), box=document.getElementById("finderResults");
+  status.textContent="Finding the best matches…";
+  const doRank=(me=null)=>{
+    let pool=waters.filter(w=>w.species.includes(species));
+    if(me){
+      pool=pool.filter(w=>coords[w.name]).map(w=>({...w,_distance:haversine(me,coords[w.name])})).filter(w=>w._distance<=range);
+    }
+    let ranked=pool.map(w=>{const r=scoreWater(w,species,method);return {...w,_score:r.score,_reasons:r.reasons};})
+      .sort((a,b)=>b._score-a._score);
+    if(!ranked.length){
+      box.innerHTML='<div class="mutedbox"><b>No matches found.</b><p class="small">Try a wider range or another fishing method.</p></div>';
+      status.textContent=me?'No mapped waters with that species were found within your selected range.':'No waters in the current database list that species.';
+      return;
+    }
+    box.innerHTML=ranked.slice(0,5).map((w,i)=>`
+      <div class="result">
+        <div class="rank">#${i+1} MATCH</div>
+        <h3>${w.name}</h3>
+        <div class="findscore">${w._score}/100</div>
+        <div class="scorebar"><span style="width:${w._score}%"></span></div>
+        <div class="small">${w.county} County • ${w.region} • ${w.acres.toLocaleString()} acres${w._distance!==undefined?' • '+w._distance.toFixed(1)+' mi away':''}</div>
+        <p class="reason small"><b>Why it ranked:</b> ${w._reasons.join(" ")}</p>
+        <div class="nearbar">
+          ${coords[w.name]?`<button class="btn" onclick="focusWater('${w.name.replace(/'/g,"\\'")}')">📍 Map</button>`:''}
+          ${coords[w.name]?`<a class="btn" target="_blank" href="https://www.google.com/maps/search/?api=1&query=${coords[w.name][0]},${coords[w.name][1]}">🧭 Navigate</a>`:''}
+          <button class="btn" onclick="showWater('${w.name.replace(/'/g,"\\'")}')">Details</button>
+        </div>
+      </div>`).join("");
+    status.textContent=me?`Ranked ${Math.min(5,ranked.length)} matches using your GPS and the selected range.`:`Ranked the best ${Math.min(5,ranked.length)} matches in the current database.`;
+  };
+
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(
+      pos=>doRank([pos.coords.latitude,pos.coords.longitude]),
+      ()=>doRank(null),
+      {enableHighAccuracy:false,timeout:6000,maximumAge:300000}
+    );
+  } else doRank(null);
+}
+document.getElementById("findFishBtn")?.addEventListener("click",runFinder);
+
 function findNearby(){
   const status=document.getElementById('nearStatus');
   if(!navigator.geolocation){status.textContent='GPS is not available in this browser.';return;}
