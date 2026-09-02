@@ -22,7 +22,7 @@
 </section>
 <section id="mapping" class="hidden">
 <div class="card"><div class="label">NEBRASKA FISHING MAP</div><p class="small">This is the first live map layer. Markers currently represent waters with verified coordinates; the database will continue gaining coordinates as Phase 1 expands.</p><div class="controls"><button class="btn" id="locateBtn">📍 Use My Location</button><button class="btn secondary" id="nebraskaBtn">🗺️ Reset to Nebraska</button></div></div>
-<div class="card"><div id="map"></div></div>
+<div class="card"><div class="label">MAPPED WATERS</div><p class="small"><b>19</b> waters currently have map markers in this build. More coordinates will be added as the Nebraska water database is expanded.</p></div><div class="card"><div id="map"></div></div>
 <div class="card"><div class="label">MAP RESOURCES</div><div class="controls"><a class="btn" target="_blank" href="https://gismaps.outdoornebraska.gov/">NGPC Interactive Maps →</a><a class="btn secondary" target="_blank" href="https://outdoornebraska.gov/guides-maps/public-access-atlas/">Public Access Atlas →</a><a class="btn secondary" target="_blank" href="https://outdoornebraska.gov/guides-maps/maps/contour-maps/">Lake Contours & Structure →</a></div><p class="small">NGPC says its contour maps provide underwater topography and habitat/structure such as cedar trees, artificial structures and rock shoals. Its Public Access Atlas is the current source for public-access sites and can change over time.</p></div>
 </section>
 <section id="hunting" class="hidden"><div class="card"><h2>🦆 Hunting is next</h2><p class="small">Phase 1 is starting with the fishing database. The same data model will be used for public hunting areas, waterfowl zones, deer units, access and habitat in the next build.</p><button class="btn secondary" onclick="alert('Hunting database will be added after the fishing water database is established.')">Phase 1 Fishing First</button></div></section>
@@ -104,6 +104,13 @@ const coords={
 'Lake Minatare SRA':[41.94958,-103.508],
 'Willow Creek SRA':[42.17917,-97.567],
 'Lake McConaughy':[41.20028,-101.66472]
+'Czechland Lake':[41.32569,-96.8208],
+'Conestoga Lake':[40.771057,-96.844614],
+'Davis Creek Reservoir WMA':[41.41794,-98.76631],
+'Elwood Reservoir WMA':[40.62578,-99.86089],
+'Walnut Creek Reservoir':[41.1003,-96.0308],
+'Wehrspann Lake Recreation Area':[41.1888,-96.1855],
+'Yankee Hill Lake WMA':[40.7165,-96.6325]
 };
 function matches(w){let s=species.value,r=region.value,q=search.value.toLowerCase().trim();let hay=(w.name+' '+w.county+' '+w.species.join(' ')).toLowerCase();return (s==='all'||w.species.includes(s))&&(r==='all'||w.region===r)&&(!q||hay.includes(q))}
 function render(){let list=waters.filter(matches);count.textContent=list.length;results.innerHTML=list.map(w=>`<div class="result"><h3>${w.name}</h3><div class="small">${w.county} County • ${w.region} • ${w.acres.toLocaleString()} acres</div><div class="chips">${w.species.map(x=>`<span class="chip">${x}</span>`).join('')}</div><p class="small"><b>Access:</b> ${w.access}</p><p class="source"><a target="_blank" href="${sourceBase}${w.source}">2026 NGPC guide entry →</a>${coords[w.name]?` &nbsp; <a href="#" onclick="focusWater('${w.name.replace(/'/g,"\'")}');return false">📍 View on app map</a>`:''}</p></div>`).join('')||'<div class="card"><b>No matching waters.</b><p class="small">Try another species, region, or search term.</p></div>'}
