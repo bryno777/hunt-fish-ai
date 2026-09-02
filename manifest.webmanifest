@@ -1,0 +1,8 @@
+{
+  "name": "Hunt & Fish AI",
+  "short_name": "Hunt & Fish AI",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#0d1511",
+  "theme_color": "#102019"
+}
