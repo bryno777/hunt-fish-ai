@@ -12,7 +12,7 @@
 .detail{margin-top:12px;border-top:1px solid var(--line);padding-top:12px}
 .distance{color:var(--gold);font-weight:800}
 
-.findscore{font-size:28px;font-weight:800}.rank{font-size:13px;color:var(--gold);font-weight:800}.reason{margin:8px 0}.scorebar{height:8px;background:#26382d;border-radius:10px;overflow:hidden}.scorebar>span{display:block;height:100%;background:var(--accent)}.mutedbox{background:var(--panel2);padding:10px;border-radius:10px;margin-top:8px}
+.findscore{font-size:28px;font-weight:800}.rank{font-size:13px;color:var(--gold);font-weight:800}.reason{margin:8px 0}.scorebar{height:8px;background:#26382d;border-radius:10px;overflow:hidden}.scorebar>span{display:block;height:100%;background:var(--accent)}.mutedbox{background:var(--panel2);padding:10px;border-radius:10px;margin-top:8px}.weathergrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:12px}.weathercard{background:#101c16;border:1px solid var(--line);border-radius:18px;padding:14px}.weathericon{font-size:30px}.weatherbig{font-size:28px;font-weight:900}.weathermeta{font-size:13px;color:var(--muted);line-height:1.5}.weather-good{color:var(--accent)}.weather-warn{color:var(--gold)}@media(max-width:650px){.weathergrid{grid-template-columns:1fr}}
 </style><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script></head>
 <body>
 <header><h1>🎣🦆🦌 Hunt & Fish AI</h1><div class="sub">Nebraska • Phase 1: real public-water database</div></header>
@@ -24,12 +24,16 @@
 <select id="region"><option value="all">All regions</option><option>Northeast</option><option>Northwest</option><option>South-Central</option><option>Southeast</option><option>Southwest</option></select>
 <input class="search" id="search" placeholder="Search lake, river, county, or species…">
 </div></div>
+<div class="card" id="liveConditionsCard"><div class="label">🌦️ LIVE CONDITIONS</div>
+<p class="small">Phase 2A pulls the latest National Weather Service hourly forecast for mapped waters. Weather scores are guidance—not a guarantee of fish activity.</p>
+<div class="nearbar"><button class="btn primary" id="weatherBtn">🌦️ Load live conditions</button><button class="btn" id="weatherClearBtn">Clear weather</button></div>
+<div id="weatherStatus" class="small"></div><div id="weatherResults"></div></div>
 <div class="card"><div class="label">DATABASE</div><div class="stats"><div class="stat"><span class="small">WATERS LOADED</span><b id="count">0</b></div><div class="stat"><span class="small">SOURCE</span><b>2026 NGPC</b></div><div class="stat"><span class="small">DEPTH / STRUCTURE</span><b>NGPC maps</b></div></div></div>
 <div id="results"></div>
 <div class="card"><div class="label">PHASE 1B</div><p class="small"><b>Expanded database + recommendation engine:</b> South-Central, Southeast and Southwest waters are searchable, and the new Find Me a Fish engine ranks them by species and fishing method. This is still a growing dataset; Phase 1 will continue until the public-water tables are fully structured.</p></div>
 <div class="card" id="finder">
   <div class="label">🎯 FIND ME A FISH</div>
-  <p class="small">Choose a species and fishing style. The app ranks waters using the current Phase 1 database: species match, water size, access, and your selected method. Live weather, wind, water temperature and flow will be added in the next layer.</p>
+  <p class="small">Choose a species and fishing style. The app ranks waters using species, water size, access, <b>live weather</b>, and your selected method. Water temperature and flow are planned for a later phase.</p>
   <div class="controls">
     <select id="findSpecies">
       <option>Walleye</option><option>Catfish</option><option>Crappie</option>
@@ -187,7 +191,7 @@ function showWater(name){
     <p class="small"><b>Species:</b> ${w.species.join(', ')}</p>
     <p class="small"><b>Public-access note:</b> ${w.access}</p>
     ${xy?`<p class="small"><b>Coordinates:</b> ${xy[0].toFixed(5)}, ${xy[1].toFixed(5)}</p>`:''}
-    <p class="small"><b>Next data layer:</b> live weather, water level/flow, water temperature and NGPC structure/bathymetry integration.</p>`;
+    <p class="small"><b>Live conditions:</b> <span id="detail-weather">Load Phase 2A conditions above.</span></p>`;
 }
 function haversine(a,b){
   const R=3958.7613, p=Math.PI/180;
@@ -196,76 +200,76 @@ function haversine(a,b){
   return 2*R*Math.asin(Math.sqrt(x));
 }
 
-function scoreWater(w, species, method){
-  let score = 45;
-  const reasons = [];
-  if(w.species.includes(species)){ score += 30; reasons.push("Target species is listed for this water."); }
-  else return {score:0,reasons:[]};
-
-  if(w.acres >= 5000){ score += 8; reasons.push("Large water body offers more area to locate fish."); }
-  else if(w.acres >= 500){ score += 5; reasons.push("Moderate-to-large water body."); }
-
-  const a=(w.access||"").toLowerCase();
-  if(method==="boat"){
-    if(a.includes("ramp")||a.includes("boat")){score+=10;reasons.push("Boat access is listed.");}
-    else {score-=4;reasons.push("Boat access is not clearly listed.");}
-  } else if(method==="kayak"){
-    if(a.includes("paddlecraft")||a.includes("nonpowered")||a.includes("boat")){score+=9;reasons.push("Kayak/paddlecraft-compatible access is indicated.");}
-    else if(a.includes("ramp")){score+=5;reasons.push("A boat ramp is listed; confirm paddlecraft access.");}
-    else score-=2;
-  } else {
-    if(a.includes("accessible")||a.includes("pier")||a.includes("bank")){score+=10;reasons.push("Shore-friendly access is indicated.");}
-    else score+=3;
+const weatherCache={};
+const weatherPointsCache={};
+const NWS_BASE='https://api.weather.gov';
+function weatherEmoji(text=''){const t=text.toLowerCase();if(t.includes('thunder'))return '⛈️';if(t.includes('snow')||t.includes('sleet'))return '❄️';if(t.includes('rain')||t.includes('shower'))return '🌧️';if(t.includes('fog'))return '🌫️';if(t.includes('cloud'))return '☁️';if(t.includes('wind'))return '💨';return '☀️'}
+function windParts(v=''){const m=String(v).match(/([0-9.]+)\s*(?:to|-)\s*([0-9.]+)\s*([A-Za-z]+)|([0-9.]+)\s*([A-Za-z]+)/i);if(!m)return {mph:null,dir:''};const mph=Number(m[2]||m[5]);const unit=(m[3]||m[6]||'').toLowerCase();return {mph:unit.startsWith('km')?mph*0.621371:mph,dir:''}}
+function degreesToCardinal(deg){if(deg==null||isNaN(deg))return '';const dirs=['N','NE','E','SE','S','SW','W','NW'];return dirs[Math.round(Number(deg)/45)%8]}
+async function nwsJson(url){const r=await fetch(url,{headers:{'Accept':'application/geo+json'}});if(!r.ok)throw new Error('NWS '+r.status);return r.json()}
+async function getWeather(name){
+  if(weatherCache[name] && Date.now()-weatherCache[name].ts<15*60*1000)return weatherCache[name].data;
+  const xy=coords[name]; if(!xy)throw new Error('No coordinates');
+  let point=weatherPointsCache[name];
+  if(!point){point=await nwsJson(`${NWS_BASE}/points/${xy[0]},${xy[1]}`);weatherPointsCache[name]=point;}
+  const url=point?.properties?.forecastHourly;if(!url)throw new Error('Hourly forecast unavailable');
+  const hourly=await nwsJson(url);const periods=hourly?.properties?.periods||[];if(!periods.length)throw new Error('No forecast periods');
+  const now=Date.now();const current=periods.find(p=>new Date(p.startTime).getTime()>=now)||periods[0];
+  const next=periods.slice(0,12);
+  const data={name,temp:current.temperature,unit:current.temperatureUnit,wind:current.windSpeed,windDir:current.windDirection,short:current.shortForecast,detail:current.detailedForecast,prob:current.probabilityOfPrecipitation?.value,clouds:current.clouds?.value,icon:current.icon,periods:next,updated:new Date()};
+  weatherCache[name]={ts:Date.now(),data};return data;
+}
+function weatherScore(w, species){
+  const d=weatherCache[w.name]?.data;if(!d)return {score:0,reasons:[],label:'Weather not loaded'};
+  let bonus=0,reasons=[];const temp=Number(d.temp), wind=windParts(d.wind).mph ?? Number(String(d.wind).match(/[0-9.]+/)?.[0]||0), rain=Number(d.prob||0);const text=(d.short||'').toLowerCase();
+  if(Number.isFinite(temp)){
+    const ideal={Walleye:[50,72],Catfish:[60,88],Crappie:[52,75],Bass:[55,82],"Northern Pike":[45,70],Trout:[40,68],"White Bass":[52,78],Bluegill:[62,82]}[species]||[50,80];
+    if(temp>=ideal[0]&&temp<=ideal[1]){bonus+=6;reasons.push(`Air temperature ${temp}°${d.unit} is in a favorable range for ${species}.`)}
+    else if(temp<ideal[0]-15||temp>ideal[1]+15){bonus-=3;reasons.push(`Air temperature ${temp}°${d.unit} is outside the preferred range.`)}
   }
-
-  if((w.access||"").toLowerCase().includes("camping")){score+=2;reasons.push("Camping is listed.");}
-  score=Math.max(1,Math.min(100,Math.round(score)));
-  return {score,reasons};
+  if(wind>=5&&wind<=18){bonus+=4;reasons.push(`Wind ${Math.round(wind)} mph may improve water movement and positioning.`)}
+  else if(wind>25){bonus-=5;reasons.push(`Strong wind around ${Math.round(wind)} mph may make boat/kayak fishing tougher.`)}
+  else if(wind>18){bonus-=2;reasons.push(`Wind around ${Math.round(wind)} mph may affect presentation and boat control.`)}
+  if(rain>=60){bonus-=3;reasons.push(`${rain}% precipitation chance increases the chance of wet conditions.`)}
+  else if(rain<=20){bonus+=1;reasons.push(`Low precipitation chance (${rain}%) gives a cleaner weather window.`)}
+  if(text.includes('thunder')){bonus-=6;reasons.push('Thunderstorms are a safety concern; avoid being on the water during lightning.')}
+  return {score:Math.max(-15,Math.min(15,bonus)),reasons};
 }
-function runFinder(){
-  const species=document.getElementById("findSpecies").value;
-  const method=document.getElementById("findMethod").value;
-  const range=Number(document.getElementById("findRange").value);
-  const status=document.getElementById("finderStatus"), box=document.getElementById("finderResults");
-  status.textContent="Finding the best matches…";
-  const doRank=(me=null)=>{
-    let pool=waters.filter(w=>w.species.includes(species));
-    if(me){
-      pool=pool.filter(w=>coords[w.name]).map(w=>({...w,_distance:haversine(me,coords[w.name])})).filter(w=>w._distance<=range);
-    }
-    let ranked=pool.map(w=>{const r=scoreWater(w,species,method);return {...w,_score:r.score,_reasons:r.reasons};})
-      .sort((a,b)=>b._score-a._score);
-    if(!ranked.length){
-      box.innerHTML='<div class="mutedbox"><b>No matches found.</b><p class="small">Try a wider range or another fishing method.</p></div>';
-      status.textContent=me?'No mapped waters with that species were found within your selected range.':'No waters in the current database list that species.';
-      return;
-    }
-    box.innerHTML=ranked.slice(0,5).map((w,i)=>`
-      <div class="result">
-        <div class="rank">#${i+1} MATCH</div>
-        <h3>${w.name}</h3>
-        <div class="findscore">${w._score}/100</div>
-        <div class="scorebar"><span style="width:${w._score}%"></span></div>
-        <div class="small">${w.county} County • ${w.region} • ${w.acres.toLocaleString()} acres${w._distance!==undefined?' • '+w._distance.toFixed(1)+' mi away':''}</div>
-        <p class="reason small"><b>Why it ranked:</b> ${w._reasons.join(" ")}</p>
-        <div class="nearbar">
-          ${coords[w.name]?`<button class="btn" onclick="focusWater('${w.name.replace(/'/g,"\\'")}')">📍 Map</button>`:''}
-          ${coords[w.name]?`<a class="btn" target="_blank" href="https://www.google.com/maps/search/?api=1&query=${coords[w.name][0]},${coords[w.name][1]}">🧭 Navigate</a>`:''}
-          <button class="btn" onclick="showWater('${w.name.replace(/'/g,"\\'")}')">Details</button>
-        </div>
-      </div>`).join("");
-    status.textContent=me?`Ranked ${Math.min(5,ranked.length)} matches using your GPS and the selected range.`:`Ranked the best ${Math.min(5,ranked.length)} matches in the current database.`;
-  };
-
-  if(navigator.geolocation){
-    navigator.geolocation.getCurrentPosition(
-      pos=>doRank([pos.coords.latitude,pos.coords.longitude]),
-      ()=>doRank(null),
-      {enableHighAccuracy:false,timeout:6000,maximumAge:300000}
-    );
-  } else doRank(null);
+function scoreWater(w, species, method){
+  let score = 45; const reasons=[];
+  if(!w.species.includes(species))return {score:0,reasons:[]};
+  score+=30; reasons.push('Target species is listed for this water.');
+  if(w.acres>=5000){score+=8;reasons.push('Large water body offers more area to locate fish.')}else if(w.acres>=500){score+=5;reasons.push('Moderate-to-large water body.')}
+  const a=(w.access||'').toLowerCase();
+  if(method==='boat'){if(a.includes('ramp')||a.includes('boat')){score+=10;reasons.push('Boat access is listed.')}else{score-=4;reasons.push('Boat access is not clearly listed.')}}
+  else if(method==='kayak'){if(a.includes('paddlecraft')||a.includes('nonpowered')||a.includes('boat')){score+=9;reasons.push('Kayak/paddlecraft-compatible access is indicated.')}else if(a.includes('ramp')){score+=5;reasons.push('A boat ramp is listed; confirm paddlecraft access.')}else score-=2}
+  else {if(a.includes('accessible')||a.includes('pier')||a.includes('bank')){score+=10;reasons.push('Shore-friendly access is indicated.')}else score+=3}
+  if(a.includes('camping')){score+=2;reasons.push('Camping is listed.')}
+  const ws=weatherScore(w,species);score+=ws.score;if(ws.reasons.length)reasons.push(...ws.reasons);
+  score=Math.max(1,Math.min(100,Math.round(score)));return {score,reasons,weather:ws};
 }
-document.getElementById("findFishBtn")?.addEventListener("click",runFinder);
+function weatherSummary(d){if(!d)return '';const rain=d.prob==null?'—':`${d.prob}%`;return `${weatherEmoji(d.short)} ${d.temp}°${d.unit} • ${d.short} • Wind ${d.wind||'—'} ${d.windDir||''} • Rain ${rain}`}
+function renderWeatherCards(items){const box=document.getElementById('weatherResults');box.innerHTML=`<div class="weathergrid">${items.map(d=>`<div class="weathercard"><div class="weathericon">${weatherEmoji(d.short)}</div><b>${d.name}</b><div class="weatherbig">${d.temp}°${d.unit}</div><div class="weathermeta">${d.short}<br>Wind: ${d.wind||'—'} ${d.windDir||''}<br>Precip: ${d.prob==null?'—':d.prob+'%'}${d.clouds!=null?' • Cloud cover: '+d.clouds+'%':''}</div></div>`).join('')}</div>`}
+async function loadAllWeather(){
+  const status=document.getElementById('weatherStatus'),box=document.getElementById('weatherResults');status.textContent='Loading live NWS conditions for mapped waters…';box.innerHTML='';
+  const mapped=waters.filter(w=>coords[w.name]);const out=[];let done=0;
+  for(let i=0;i<mapped.length;i+=4){const batch=mapped.slice(i,i+4);const vals=await Promise.all(batch.map(async w=>{try{return await getWeather(w.name)}catch(e){return null}finally{done++;status.textContent=`Loading live weather… ${done}/${mapped.length}`}}));out.push(...vals.filter(Boolean));}
+  if(!out.length){status.textContent='Live weather could not be loaded. The app will keep using the Phase 1 score.';return;}
+  renderWeatherCards(out);status.textContent=`Live NWS weather loaded for ${out.length} of ${mapped.length} mapped waters. Data refreshes after 15 minutes.`;
+}
+document.getElementById('weatherBtn')?.addEventListener('click',loadAllWeather);
+document.getElementById('weatherClearBtn')?.addEventListener('click',()=>{Object.keys(weatherCache).forEach(k=>delete weatherCache[k]);document.getElementById('weatherResults').innerHTML='';document.getElementById('weatherStatus').textContent='Live weather cleared.'});
+async function runFinder(){
+  const species=document.getElementById('findSpecies').value,method=document.getElementById('findMethod').value,range=Number(document.getElementById('findRange').value);const status=document.getElementById('finderStatus'),box=document.getElementById('finderResults');status.textContent='Getting live weather and finding the best matches…';box.innerHTML='';
+  const mePromise=new Promise(resolve=>{if(!navigator.geolocation)return resolve(null);navigator.geolocation.getCurrentPosition(p=>resolve([p.coords.latitude,p.coords.longitude]),()=>resolve(null),{enableHighAccuracy:false,timeout:6000,maximumAge:300000})});const me=await mePromise;
+  let pool=waters.filter(w=>w.species.includes(species)&&coords[w.name]);if(me)pool=pool.map(w=>({...w,_distance:haversine(me,coords[w.name])})).filter(w=>w._distance<=range);
+  for(let i=0;i<pool.length;i+=4){await Promise.all(pool.slice(i,i+4).map(w=>getWeather(w.name).catch(()=>null)));}
+  let ranked=pool.map(w=>{const r=scoreWater(w,species,method);return {...w,_score:r.score,_reasons:r.reasons,_weather:r.weather};}).sort((a,b)=>b._score-a._score);
+  if(!ranked.length){box.innerHTML='<div class="mutedbox"><b>No matches found.</b><p class="small">Try a wider range or another fishing method.</p></div>';status.textContent=me?'No mapped waters with that species were found within your selected range.':'No mapped waters list that species.';return;}
+  box.innerHTML=ranked.slice(0,5).map((w,i)=>`<div class="result"><div class="rank">#${i+1} MATCH</div><h3>${w.name}</h3><div class="findscore">${w._score}/100</div><div class="scorebar"><span style="width:${w._score}%"></span></div><div class="small">${w.county} County • ${w.region} • ${w.acres.toLocaleString()} acres${w._distance!==undefined?' • '+w._distance.toFixed(1)+' mi away':''}</div><div class="mutedbox"><b>Live conditions:</b><br>${weatherSummary(weatherCache[w.name]?.data)||'Unavailable'}</div><p class="reason small"><b>Why it ranked:</b> ${w._reasons.join(' ')}</p><div class="nearbar">${coords[w.name]?`<button class="btn" onclick="focusWater('${w.name.replace(/'/g,"\\'")}')">📍 Map</button>`:''}${coords[w.name]?`<a class="btn" target="_blank" href="https://www.google.com/maps/search/?api=1&query=${coords[w.name][0]},${coords[w.name][1]}">🧭 Navigate</a>`:''}<button class="btn" onclick="showWater('${w.name.replace(/'/g,"\\'")}')">Details</button></div></div>`).join('');
+  status.textContent=me?`Ranked the best ${Math.min(5,ranked.length)} matches using GPS, access, species, and live NWS weather.`:`Ranked the best ${Math.min(5,ranked.length)} mapped matches using access, species, and live NWS weather.`;
+}
+document.getElementById('findFishBtn')?.addEventListener('click',runFinder);
 
 function findNearby(){
   const status=document.getElementById('nearStatus');
