@@ -24,10 +24,6 @@
 <select id="region"><option value="all">All regions</option><option>Northeast</option><option>Northwest</option><option>South-Central</option><option>Southeast</option><option>Southwest</option></select>
 <input class="search" id="search" placeholder="Search lake, river, county, or species…">
 </div></div>
-<div class="card" id="liveConditionsCard"><div class="label">🌦️ LIVE CONDITIONS</div>
-<p class="small">Phase 2A pulls the latest National Weather Service hourly forecast for mapped waters. Weather scores are guidance—not a guarantee of fish activity.</p>
-<div class="nearbar"><button class="btn primary" id="weatherBtn">🌦️ Load live conditions</button><button class="btn" id="weatherClearBtn">Clear weather</button></div>
-<div id="weatherStatus" class="small"></div><div id="weatherResults"></div></div>
 <div class="card"><div class="label">DATABASE</div><div class="stats"><div class="stat"><span class="small">WATERS LOADED</span><b id="count">0</b></div><div class="stat"><span class="small">SOURCE</span><b>2026 NGPC</b></div><div class="stat"><span class="small">DEPTH / STRUCTURE</span><b>NGPC maps</b></div></div></div>
 <div id="results"></div>
 <div class="card"><div class="label">PHASE 1B</div><p class="small"><b>Expanded database + recommendation engine:</b> South-Central, Southeast and Southwest waters are searchable, and the new Find Me a Fish engine ranks them by species and fishing method. This is still a growing dataset; Phase 1 will continue until the public-water tables are fully structured.</p></div>
@@ -52,8 +48,8 @@
       <option value="200">Within 200 miles</option>
     </select>
   </div>
-  <div class="nearbar"><button class="btn primary" id="findFishBtn">🎯 Find my best waters</button></div>
-  <div id="finderStatus" class="small"></div>
+  <div class="nearbar"><button class="btn primary" id="findFishBtn">🎯 Find my best waters</button><button class="btn" id="weatherBtn">🌦️ Refresh weather</button><button class="btn" id="weatherClearBtn">Clear weather</button></div>
+  <div id="finderStatus" class="small"></div><div id="weatherStatus" class="small"></div>
   <div id="finderResults"></div>
 </div>
 <div class="card"><div class="label">FIND A WATER NEAR YOU</div>
@@ -249,16 +245,15 @@ function scoreWater(w, species, method){
   score=Math.max(1,Math.min(100,Math.round(score)));return {score,reasons,weather:ws};
 }
 function weatherSummary(d){if(!d)return '';const rain=d.prob==null?'—':`${d.prob}%`;return `${weatherEmoji(d.short)} ${d.temp}°${d.unit} • ${d.short} • Wind ${d.wind||'—'} ${d.windDir||''} • Rain ${rain}`}
-function renderWeatherCards(items){const box=document.getElementById('weatherResults');box.innerHTML=`<div class="weathergrid">${items.map(d=>`<div class="weathercard"><div class="weathericon">${weatherEmoji(d.short)}</div><b>${d.name}</b><div class="weatherbig">${d.temp}°${d.unit}</div><div class="weathermeta">${d.short}<br>Wind: ${d.wind||'—'} ${d.windDir||''}<br>Precip: ${d.prob==null?'—':d.prob+'%'}${d.clouds!=null?' • Cloud cover: '+d.clouds+'%':''}</div></div>`).join('')}</div>`}
 async function loadAllWeather(){
-  const status=document.getElementById('weatherStatus'),box=document.getElementById('weatherResults');status.textContent='Loading live NWS conditions for mapped waters…';box.innerHTML='';
+  const status=document.getElementById('weatherStatus');status.textContent='Loading live NWS weather for mapped waters…';
   const mapped=waters.filter(w=>coords[w.name]);const out=[];let done=0;
   for(let i=0;i<mapped.length;i+=4){const batch=mapped.slice(i,i+4);const vals=await Promise.all(batch.map(async w=>{try{return await getWeather(w.name)}catch(e){return null}finally{done++;status.textContent=`Loading live weather… ${done}/${mapped.length}`}}));out.push(...vals.filter(Boolean));}
   if(!out.length){status.textContent='Live weather could not be loaded. The app will keep using the Phase 1 score.';return;}
-  renderWeatherCards(out);status.textContent=`Live NWS weather loaded for ${out.length} of ${mapped.length} mapped waters. Data refreshes after 15 minutes.`;
+  status.textContent=`Live NWS weather ready for ${out.length} mapped waters. Weather now appears inside each lake recommendation. Refreshes after 15 minutes.`;
 }
 document.getElementById('weatherBtn')?.addEventListener('click',loadAllWeather);
-document.getElementById('weatherClearBtn')?.addEventListener('click',()=>{Object.keys(weatherCache).forEach(k=>delete weatherCache[k]);document.getElementById('weatherResults').innerHTML='';document.getElementById('weatherStatus').textContent='Live weather cleared.'});
+document.getElementById('weatherClearBtn')?.addEventListener('click',()=>{Object.keys(weatherCache).forEach(k=>delete weatherCache[k]);document.getElementById('weatherStatus').textContent='Live weather cache cleared. Run Find My Best Waters to refresh.'});
 async function runFinder(){
   const species=document.getElementById('findSpecies').value,method=document.getElementById('findMethod').value,range=Number(document.getElementById('findRange').value);const status=document.getElementById('finderStatus'),box=document.getElementById('finderResults');status.textContent='Getting live weather and finding the best matches…';box.innerHTML='';
   const mePromise=new Promise(resolve=>{if(!navigator.geolocation)return resolve(null);navigator.geolocation.getCurrentPosition(p=>resolve([p.coords.latitude,p.coords.longitude]),()=>resolve(null),{enableHighAccuracy:false,timeout:6000,maximumAge:300000})});const me=await mePromise;
