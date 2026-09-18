@@ -17,7 +17,7 @@
 .tripgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}.tripitem{background:var(--panel2);border-radius:12px;padding:12px}.tripitem b{display:block;margin-bottom:4px}.timeline{display:grid;gap:8px;margin-top:10px}.timeitem{background:#101c16;border:1px solid var(--line);border-radius:12px;padding:10px}.timeitem strong{color:var(--accent)}.checklist{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.check{background:var(--panel2);padding:9px;border-radius:10px;font-size:13px}.tripnotice{background:#211d10;border:1px solid #66552a;padding:10px;border-radius:12px;margin-top:10px;font-size:13px;line-height:1.45}@media(max-width:650px){.tripgrid,.checklist{grid-template-columns:1fr}}
 .enginegrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}.engineitem{background:var(--panel2);border-radius:12px;padding:10px}.engineitem b{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}.engineitem strong{font-size:20px}.confidence{display:inline-block;padding:5px 9px;border-radius:999px;background:#20362a;color:var(--accent);font-weight:800;font-size:12px}.forecastbox{background:#0d1913;border:1px solid var(--line);border-radius:14px;padding:12px;margin-top:10px}.enginebar{height:10px;background:#26382d;border-radius:10px;overflow:hidden;margin-top:8px}.enginebar span{display:block;height:100%;background:var(--accent)}@media(max-width:650px){.enginegrid{grid-template-columns:1fr 1fr}}</style><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script></head>
 <body>
-<header><h1>🎣🦆🦌 Hunt & Fish AI</h1><div class="sub">Nebraska • Phase 2G: mapped contour target intelligence</div></header>
+<header><h1>🎣🦆🦌 Hunt & Fish AI</h1><div class="sub">Nebraska • Phase 3.2: NGPC GIS coordinate expansion</div></header>
 <main class="wrap">
 <div class="tabs"><button class="tab active" id="fishTab">🎣 Fishing</button><button class="tab" id="mapTab">🗺️ Map</button><button class="tab" id="huntTab">🦆 Hunting</button></div>
 <section id="fishing">
@@ -26,7 +26,7 @@
 <select id="region"><option value="all">All regions</option><option>Northeast</option><option>Northwest</option><option>South-Central</option><option>Southeast</option><option>Southwest</option></select>
 <input class="search" id="search" placeholder="Search lake, river, county, or species…">
 </div></div>
-<div class="card"><div class="label">DATABASE</div><div class="stats"><div class="stat"><span class="small">WATERS LOADED</span><b id="count">0</b></div><div class="stat"><span class="small">SOURCE</span><b>2026 NGPC</b></div><div class="stat"><span class="small">DEPTH / STRUCTURE</span><b>NGPC maps</b></div></div></div>
+<div class="card"><div class="label">🛰️ PHASE 3.2 • NGPC GIS COORDINATE SYNC</div><span class="phasebadge">OFFICIAL NGPC GIS</span><p class="small">Load the current NGPC public-fishing GIS layer to match water names to official mapped geometry. Matching is performed in the browser; the app does not invent coordinates. Polygon/point geometry is converted to a map center for navigation. Exact access and regulations should still be verified in NGPC's current maps.</p><div class="nearbar"><button class="btn primary" id="syncNgpcBtn">🛰️ Sync NGPC GIS coordinates</button><button class="btn" id="clearNgpcBtn">Clear GIS additions</button></div><div id="ngpcSyncStatus" class="small"></div><div id="ngpcSyncResults"></div></div><div class="card"><div class="label">DATABASE</div><div class="stats"><div class="stat"><span class="small">WATERS LOADED</span><b id="count">0</b></div><div class="stat"><span class="small">SOURCE</span><b>2026 NGPC</b></div><div class="stat"><span class="small">DEPTH / STRUCTURE</span><b>NGPC maps</b></div></div></div>
 <div id="results"></div>
 <div class="card"><div class="label">PHASE 1B</div><p class="small"><b>Expanded database + recommendation engine:</b> South-Central, Southeast and Southwest waters are searchable, and the new Find Me a Fish engine ranks them by species and fishing method. This is still a growing dataset; Phase 1 will continue until the public-water tables are fully structured.</p></div>
 <div class="card" id="finder">
@@ -64,7 +64,7 @@
 </section>
 <section id="mapping" class="hidden">
 <div class="card"><div class="label">NEBRASKA FISHING MAP</div><p class="small">This is the first live map layer. Markers currently represent waters with verified coordinates; the database will continue gaining coordinates as Phase 1 expands.</p><div class="controls"><button class="btn" id="locateBtn">📍 Use My Location</button><button class="btn secondary" id="nebraskaBtn">🗺️ Reset to Nebraska</button></div></div>
-<div class="card"><div class="label">🎯 PHASE 2F • HABITAT + STRUCTURE INTELLIGENCE</div><span class="phasebadge">PHASE 2E • LIVE NGPC BATHYMETRY</span><p class="small">Pick a species and method, then choose a mapped water. The planner draws <b>approximate target zones</b> around the verified water coordinate using species behavior and structure patterns. These are not surveyed GPS fishing spots.</p><div class="controls"><select id="spotWater"></select><select id="spotSpecies"><option>Walleye</option><option>Catfish</option><option>Crappie</option><option>Bass</option><option>Northern Pike</option><option>Trout</option><option>White Bass</option><option>Bluegill</option></select><select id="spotMethod"><option value="boat">Boat</option><option value="kayak">Kayak</option><option value="shore">Shore</option></select></div><div class="nearbar"><button class="btn primary" id="spotPlanBtn">🎯 Show target zones</button><button class="btn" id="clearSpotsBtn">Clear zones</button></div><div class="nearbar"><button class="btn primary" id="loadContoursBtn">🗺️ Load real NGPC contours</button><button class="btn" id="clearContoursBtn">Clear contours</button></div><div class="nearbar"><button class="btn primary" id="analyzeContoursBtn">🎯 Analyze mapped contour targets</button><button class="btn" id="clearContourTargetsBtn">Clear contour targets</button></div><div id="contourStatus" class="small"></div><div id="contourTargetStatus" class="small"></div><div id="contourTargetText"></div><div id="spotPlanStatus" class="small"></div><div id="spotPlanText"></div><div id="habitatPlan" class="intelbox" style="margin-top:10px"><b>🌲 Phase 2F structure intelligence</b><p class="small">Select a water and species, then rank the structure patterns that deserve attention first. Where NGPC has a published habitat/structure project, the app flags that official resource for verification.</p></div><div class="intelbox" style="margin-top:10px"><b>⭐ PHASE 2H • AI SPOT RANKING</b><p class="small">Combines the selected species, fishing method, official NGPC contour depth, available habitat-map flag, and current weather/time window to rank the best mapped contour targets. This is a decision aid—not a claim that fish are present at a point.</p><div class="nearbar"><button class="btn primary" id="rankSpotsBtn">⭐ Rank my fishing spots</button><button class="btn" id="clearRankedSpotsBtn">Clear ranked spots</button></div><div id="rankStatus" class="small"></div><div id="rankResults"></div></div></div><div class="card"><div class="label">MAPPED WATERS</div><p class="small"><b>19</b> waters currently have map markers in this build. More coordinates will be added as the Nebraska water database is expanded.</p></div><div class="card"><div id="map"></div></div>
+<div class="card"><div class="label">🎯 PHASE 2F • HABITAT + STRUCTURE INTELLIGENCE</div><span class="phasebadge">PHASE 2E • LIVE NGPC BATHYMETRY</span><p class="small">Pick a species and method, then choose a mapped water. The planner draws <b>approximate target zones</b> around the verified water coordinate using species behavior and structure patterns. These are not surveyed GPS fishing spots.</p><div class="controls"><select id="spotWater"></select><select id="spotSpecies"><option>Walleye</option><option>Catfish</option><option>Crappie</option><option>Bass</option><option>Northern Pike</option><option>Trout</option><option>White Bass</option><option>Bluegill</option></select><select id="spotMethod"><option value="boat">Boat</option><option value="kayak">Kayak</option><option value="shore">Shore</option></select></div><div class="nearbar"><button class="btn primary" id="spotPlanBtn">🎯 Show target zones</button><button class="btn" id="clearSpotsBtn">Clear zones</button></div><div class="nearbar"><button class="btn primary" id="loadContoursBtn">🗺️ Load real NGPC contours</button><button class="btn" id="clearContoursBtn">Clear contours</button></div><div class="nearbar"><button class="btn primary" id="analyzeContoursBtn">🎯 Analyze mapped contour targets</button><button class="btn" id="clearContourTargetsBtn">Clear contour targets</button></div><div id="contourStatus" class="small"></div><div id="contourTargetStatus" class="small"></div><div id="contourTargetText"></div><div id="spotPlanStatus" class="small"></div><div id="spotPlanText"></div><div id="habitatPlan" class="intelbox" style="margin-top:10px"><b>🌲 Phase 2F structure intelligence</b><p class="small">Select a water and species, then rank the structure patterns that deserve attention first. Where NGPC has a published habitat/structure project, the app flags that official resource for verification.</p></div><div class="intelbox" style="margin-top:10px"><b>⭐ PHASE 2H • AI SPOT RANKING</b><p class="small">Combines the selected species, fishing method, official NGPC contour depth, available habitat-map flag, and current weather/time window to rank the best mapped contour targets. This is a decision aid—not a claim that fish are present at a point.</p><div class="nearbar"><button class="btn primary" id="rankSpotsBtn">⭐ Rank my fishing spots</button><button class="btn" id="clearRankedSpotsBtn">Clear ranked spots</button></div><div id="rankStatus" class="small"></div><div id="rankResults"></div></div></div><div class="card"><div class="label">MAPPED WATERS</div><p class="small"><b id="mappedCount">19</b> waters currently have map markers. Use the NGPC GIS sync above to add current official GIS matches for the expanded database.</p></div><div class="card"><div id="map"></div></div>
 <div class="card"><div class="label">MAP RESOURCES</div><div class="controls"><a class="btn" target="_blank" href="https://gismaps.outdoornebraska.gov/">NGPC Interactive Maps →</a><a class="btn secondary" target="_blank" href="https://outdoornebraska.gov/guides-maps/public-access-atlas/">Public Access Atlas →</a><a class="btn secondary" target="_blank" href="https://outdoornebraska.gov/guides-maps/maps/contour-maps/">Lake Contours & Structure →</a></div><p class="small">NGPC says its contour maps provide underwater topography and habitat/structure such as cedar trees, artificial structures and rock shoals. Its Public Access Atlas is the current source for public-access sites and can change over time.</p></div>
 </section>
 <div class="card"><div class="label">🧭 PHASE 2I • TRIP PLANNER</div><span class="phasebadge">TRIP PLAN</span><p class="small">Turn the selected water, species, method, live weather and ranked spots into a simple fishing-day plan. Access and regulations are pulled from the app's NGPC water data; always verify the current official guide before fishing.</p><div class="controls"><select id="tripWater"></select><select id="tripSpecies"><option>Walleye</option><option>Catfish</option><option>Crappie</option><option>Bass</option><option>Northern Pike</option><option>Trout</option><option>White Bass</option><option>Bluegill</option></select><select id="tripMethod"><option value="boat">Boat</option><option value="kayak">Kayak</option><option value="shore">Shore</option></select></div><div class="nearbar"><button class="btn primary" id="buildTripBtn">🧭 Build my trip plan</button><button class="btn" id="clearTripBtn">Clear trip</button></div><div id="tripStatus" class="small"></div><div id="tripResults"></div></div><section id="hunting" class="hidden"><div class="card"><h2>🦆 Hunting is next</h2><p class="small">Phase 1 is starting with the fishing database. The same data model will be used for public hunting areas, waterfowl zones, deer units, access and habitat in the next build.</p><button class="btn secondary" onclick="alert('Hunting database will be added after the fishing water database is established.')">Phase 1 Fishing First</button></div></section>
@@ -682,6 +682,70 @@ async function buildTripPlan(){const name=document.getElementById('tripWater').v
 function clearTripPlan(){document.getElementById('tripResults')?.replaceChildren();const s=document.getElementById('tripStatus');if(s)s.textContent='Trip plan cleared.';}
 function populateEngineWaters(){const a=document.getElementById('engineWater');if(a)a.innerHTML=waters.map(w=>`<option>${w.name}</option>`).join('');}
 populateEngineWaters();document.getElementById('runEngineBtn')?.addEventListener('click',async()=>{const n=document.getElementById('engineWater').value;document.getElementById('engineStatus').textContent='Refreshing live weather…';await getWeather(n).catch(()=>null);runIntelligenceEngine();});document.getElementById('clearEngineBtn')?.addEventListener('click',clearIntelligenceEngine);populateTripWaters();document.getElementById('buildTripBtn')?.addEventListener('click',buildTripPlan);document.getElementById('clearTripBtn')?.addEventListener('click',clearTripPlan);
+
+
+const NGPC_PUBLIC_FISHING_GIS='https://services5.arcgis.com/IOshH1zLrIieqrNk/ArcGIS/rest/services/PublicFishing2024/FeatureServer/0/query';
+const ngpcAddedCoords=new Set();
+function normName(v){return String(v||'').toLowerCase().replace(/&/g,'and').replace(/[^a-z0-9]+/g,' ').replace(/\b(lake|reservoir|sra|wma|recreation|area|state|wildlife|management|natural|resource)\b/g,' ').replace(/\s+/g,' ').trim();}
+function geometryCenter(g){
+  if(!g)return null;
+  if(g.x!=null&&g.y!=null)return [g.y,g.x];
+  const pts=[];
+  const collect=a=>{if(Array.isArray(a)&&a.length){if(typeof a[0]==='number'&&a.length>=2)pts.push([a[1],a[0]]);else a.forEach(collect);}};
+  if(g.rings)collect(g.rings); else if(g.paths)collect(g.paths); else if(g.points)collect(g.points);
+  if(!pts.length)return null;
+  const lat=pts.reduce((a,p)=>a+p[0],0)/pts.length, lon=pts.reduce((a,p)=>a+p[1],0)/pts.length;
+  return [lat,lon];
+}
+function bestAttrName(attrs){
+  const keys=Object.keys(attrs||{}), prefs=['NAME','SITE_NAME','WATER_NAME','LAKE_NAME','WATERBODY','WATER_BODY','LAKE','SITE'];
+  for(const p of prefs){const k=keys.find(x=>x.toUpperCase()===p);if(k&&attrs[k])return attrs[k];}
+  const k=keys.find(x=>/name|water|lake|site/i.test(x)&&typeof attrs[x]==='string'&&attrs[x].length>2);return k?attrs[k]:'';
+}
+function addWaterMarker(name){
+  if(!map||!coords[name]||markers[name])return;
+  const w=waters.find(x=>x.name===name)||{name,county:'',acres:0};
+  const xy=coords[name];
+  markers[name]=L.marker(xy).addTo(map).bindPopup(`<b>${name}</b><br>${w.county?w.county+' County • '+Number(w.acres||0).toLocaleString()+' acres':''}<br><span style="font-size:11px">📡 Coordinate matched from NGPC public-fishing GIS.</span><br><a target="_blank" href="https://www.google.com/maps/search/?api=1&query=${xy[0]},${xy[1]}">Open in Google Maps →</a>`);
+}
+function refreshMappedSelects(){
+  const opts=Object.keys(coords).map(n=>`<option>${n}</option>`).join('');
+  ['spotWater','tripWater','engineWater'].forEach(id=>{const el=document.getElementById(id);if(el&&opts)el.innerHTML=opts;});
+}
+async function syncNgpcGIS(){
+  const st=document.getElementById('ngpcSyncStatus'),out=document.getElementById('ngpcSyncResults');
+  if(st)st.textContent='Connecting to the current NGPC public-fishing GIS layer…';
+  try{
+    const url=NGPC_PUBLIC_FISHING_GIS+'?where=1%3D1&outFields=*&returnGeometry=true&outSR=4326&f=json';
+    const r=await fetch(url); if(!r.ok)throw new Error('GIS request failed');
+    const data=await r.json(); if(data.error)throw new Error(data.error.message||'NGPC GIS returned an error');
+    const feats=data.features||[];
+    const index=new Map();
+    feats.forEach(f=>{const n=bestAttrName(f.attributes);const c=geometryCenter(f.geometry);if(n&&c)index.set(normName(n),{name:n,coords:c});});
+    let matched=0, missing=[];
+    waters.forEach(w=>{
+      if(coords[w.name])return;
+      const wn=normName(w.name);
+      let hit=index.get(wn);
+      if(!hit){
+        const candidates=[...index.entries()].filter(([k])=>k===wn||k.includes(wn)||wn.includes(k));
+        candidates.sort((a,b)=>Math.abs(a[0].length-wn.length)-Math.abs(b[0].length-wn.length));
+        if(candidates[0])hit=candidates[0][1];
+      }
+      if(hit){coords[w.name]=hit.coords;ngpcAddedCoords.add(w.name);matched++;if(map)addWaterMarker(w.name);}else missing.push(w.name);
+    });
+    refreshMappedSelects();
+    if(st)st.textContent=`NGPC GIS sync complete: ${matched} new water coordinates matched. ${Object.keys(coords).length} mapped waters are now available.`;
+    if(out)out.innerHTML=`<div class="intelbox"><b>📍 GIS coverage</b><p class="small"><b>${Object.keys(coords).length}</b> of <b>${waters.length}</b> water records now have coordinates in this session.</p><p class="small">New matches are labeled as NGPC GIS coordinates. ${missing.length?`${missing.length} waters did not receive a match and were left unmapped rather than guessed.`:'All currently unmapped records received a GIS match.'}</p>${missing.length?`<details><summary>Unmatched waters</summary><div class="small" style="margin-top:6px">${missing.slice(0,80).join(' • ')}</div></details>`:''}</div>`;
+  }catch(e){console.error(e);if(st)st.textContent='NGPC GIS sync could not be completed. Check your internet connection or try again later.';if(out)out.innerHTML='<div class="spotnote">No coordinates were invented. Existing verified coordinates remain unchanged.</div>';}
+}
+function clearNgpcGIS(){
+  ngpcAddedCoords.forEach(n=>{if(markers[n]&&map){map.removeLayer(markers[n]);delete markers[n];}delete coords[n];});ngpcAddedCoords.clear();refreshMappedSelects();
+  const st=document.getElementById('ngpcSyncStatus');if(st)st.textContent='Session-added NGPC GIS coordinates cleared. Original verified coordinates remain.';
+  const out=document.getElementById('ngpcSyncResults');if(out)out.replaceChildren();
+}
+document.getElementById('syncNgpcBtn')?.addEventListener('click',syncNgpcGIS);
+document.getElementById('clearNgpcBtn')?.addEventListener('click',clearNgpcGIS);
 
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
 </script></body></html>
